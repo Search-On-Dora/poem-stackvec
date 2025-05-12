@@ -11,6 +11,9 @@ use smallvec::{SmallVec, smallvec};
 #[cfg(feature = "arrayvec")]
 use arrayvec::ArrayVec;
 
+#[cfg(feature = "heapless")]
+use heapless::Vec as HeaplessVec;
+
 #[cfg(feature = "smallvec")]
 /// SmallVec<[T; SIZE]> wrapper that works in poem_openapi routes
 #[derive(Debug)]
@@ -21,10 +24,6 @@ impl<T, const SIZE: usize> PoemSmallVec<T, SIZE> {
     #[inline]
     pub fn new() -> Self {
         PoemSmallVec(SmallVec::new())
-    }
-    #[inline]
-    pub fn push(&mut self, item: T) {
-        self.0.push(item);
     }
     #[inline]
     pub fn as_slice(&self) -> &[T] {
@@ -78,6 +77,7 @@ impl<T: ParseFromParameter, const SIZE: usize> ParseFromParameter for PoemSmallV
     fn parse_from_parameter(value: &str) -> ParseResult<Self> {
         match T::parse_from_parameter(value) {
             Ok(item) => Ok(PoemSmallVec(smallvec![item])),
+                    // TODO - use ParseError::propagate instead of convert_err
             Err(err) => convert_err(value, err),
         }
     }
@@ -90,6 +90,7 @@ impl<T: ParseFromParameter, const SIZE: usize> ParseFromParameter for PoemSmallV
             match T::parse_from_parameter(part.as_ref()) {
                 Ok(item) => list.push(item),
                 Err(err) => {
+                    // TODO - use ParseError::propagate instead of convert_err
                     return convert_err(part, err);
                 }
             };
@@ -162,7 +163,7 @@ impl<T, const SIZE: usize> Deref for PoemArrayVec<T, SIZE> {
 
 #[cfg(feature = "arrayvec")]
 impl<T: Type, const SIZE: usize> Type for PoemArrayVec<T, SIZE> {
-    const IS_REQUIRED: bool = Vec::<T>::IS_REQUIRED;
+    const IS_REQUIRED: bool = <[T; SIZE]>::IS_REQUIRED;
     type RawValueType = PoemArrayVec<T, SIZE>;
     type RawElementValueType = T;
 
@@ -207,6 +208,101 @@ impl<T: ParseFromParameter, const SIZE: usize> ParseFromParameter for PoemArrayV
                 .map_err(|_| ParseError::custom(format!("too many items (max {SIZE})")))?;
         }
         Ok(PoemArrayVec(arr))
+    }
+}
+
+#[cfg(feature = "heapless")]
+/// `heapless::Vec` wrapper that works in poem_openapi routes
+#[derive(Debug)]
+pub struct PoemHeaplessVec<T, const N: usize>(pub HeaplessVec<T, N>);
+
+#[cfg(feature = "heapless")]
+impl<T, const N: usize> PoemHeaplessVec<T, N> {
+    #[inline]
+    pub fn new() -> Self {
+        PoemHeaplessVec(HeaplessVec::new())
+    }
+    #[inline]
+    pub fn as_slice(&self) -> &[T] {
+        self.0.as_slice()
+    }
+}
+
+#[cfg(feature = "heapless")]
+impl<T, const N: usize> Default for PoemHeaplessVec<T, N> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[cfg(feature = "heapless")]
+impl<T, const N: usize> Deref for PoemHeaplessVec<T, N> {
+    type Target = [T];
+
+    fn deref(&self) -> &Self::Target {
+        self.0.as_slice()
+    }
+}
+
+#[cfg(feature = "heapless")]
+impl<T: Type, const N: usize> Type for PoemHeaplessVec<T, N> {
+    const IS_REQUIRED: bool = <[T; N]>::IS_REQUIRED;
+    type RawValueType = Self;
+    type RawElementValueType = T;
+
+    fn name() -> Cow<'static, str> {
+        <[T; N]>::name()
+    }
+
+    fn schema_ref() -> MetaSchemaRef {
+        <[T; N]>::schema_ref()
+    }
+
+    fn as_raw_value(&self) -> Option<&Self::RawValueType> {
+        Some(self)
+    }
+
+    fn raw_element_iter<'a>(&'a self) -> Box<dyn Iterator<Item = &'a Self::RawElementValueType> + 'a> {
+        Box::new(self.0.iter())
+    }
+}
+
+#[cfg(feature = "heapless")]
+impl<T: ParseFromParameter, const N: usize> ParseFromParameter for PoemHeaplessVec<T, N> {
+    fn parse_from_parameter(value: &str) -> ParseResult<Self> {
+        let mut vec = HeaplessVec::new();
+        let item = T::parse_from_parameter(value)
+            .map_err(|e| ParseError::custom(e.message().to_string()))?;
+        vec.push(item).map_err(|_| ParseError::custom(format!("too many items (max {N})")))?;
+        Ok(PoemHeaplessVec(vec))
+    }
+
+    fn parse_from_parameters<I: IntoIterator<Item = A>, A: AsRef<str>>(iter: I) -> ParseResult<Self> {
+        let mut vec = HeaplessVec::new();
+        for part in iter {
+            let item = T::parse_from_parameter(part.as_ref())
+                .map_err(|e| ParseError::custom(e.message().to_string()))?;
+            vec.push(item).map_err(|_| ParseError::custom(format!("too many items (max {N})")))?;
+        }
+        Ok(PoemHeaplessVec(vec))
+    }
+}
+
+#[cfg(feature = "heapless")]
+impl<T: ParseFromJSON, const N: usize> ParseFromJSON for PoemHeaplessVec<T, N> {
+    fn parse_from_json(value: Option<serde_json::Value>) -> ParseResult<Self> {
+        let value = value.unwrap_or_default();
+        match value {
+            serde_json::Value::Array(arr) => {
+                let mut vec = HeaplessVec::new();
+                for part in arr {
+                    let item = T::parse_from_json(Some(part)).map_err(ParseError::propagate)?;
+                    vec.push(item).map_err(|_| ParseError::custom(format!("too many items (max {N})")))?;
+                }
+                Ok(PoemHeaplessVec(vec))
+            },
+            _ => Err(ParseError::expected_type(value)),
+        }
     }
 }
 
@@ -275,6 +371,39 @@ mod tests {
         fn parse_invalid_array_multiple() {
             let input = vec!["10", "xx", "30"];
             assert!(PoemArrayVec::<i32, 4>::parse_from_parameters(input).is_err());
+        }
+    }
+
+    // Group tests for PoemHeaplessVec behind the "heapless" feature flag.
+    #[cfg(feature = "heapless")]
+    mod heapless_tests {
+        use crate::PoemHeaplessVec;
+        use poem_openapi::types::ParseFromParameter;
+
+        #[test]
+        fn parse_heapless_single_element() {
+            let vec = PoemHeaplessVec::<i32, 4>::parse_from_parameter("42")
+                .expect("should parse single element");
+            assert_eq!(vec.as_slice(), &[42]);
+        }
+
+        #[test]
+        fn parse_heapless_multiple_elements() {
+            let input = vec!["1", "2", "3"];
+            let vec = PoemHeaplessVec::<i32, 4>::parse_from_parameters(input)
+                .expect("should parse multiple elements");
+            assert_eq!(vec.as_slice(), &[1, 2, 3]);
+        }
+
+        #[test]
+        fn parse_heapless_invalid_single() {
+            assert!(PoemHeaplessVec::<i32, 4>::parse_from_parameter("not_a_number").is_err());
+        }
+
+        #[test]
+        fn parse_heapless_invalid_multiple() {
+            let input = vec!["10", "xx", "30"];
+            assert!(PoemHeaplessVec::<i32, 4>::parse_from_parameters(input).is_err());
         }
     }
 }

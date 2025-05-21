@@ -61,10 +61,7 @@ impl<T: Type, const SIZE: usize> Type for PoemArrayVec<T, SIZE> {
 impl<T: ParseFromParameter, const SIZE: usize> ParseFromParameter for PoemArrayVec<T, SIZE> {
     fn parse_from_parameter(value: &str) -> ParseResult<Self> {
         let mut arr = ArrayVec::new();
-        let item = T::parse_from_parameter(value)
-            .map_err(|e| ParseError::custom(e.message().to_string()))?;
-        arr.try_push(item)
-            .map_err(|_| ParseError::custom(format!("too many items (max {SIZE})")))?;
+        parse_param(value, &mut arr)?;
         Ok(PoemArrayVec(arr))
     }
 
@@ -73,11 +70,16 @@ impl<T: ParseFromParameter, const SIZE: usize> ParseFromParameter for PoemArrayV
     ) -> ParseResult<Self> {
         let mut arr = ArrayVec::new();
         for part in iter {
-            let item = T::parse_from_parameter(part.as_ref())
-                .map_err(|e| ParseError::custom(e.message().to_string()))?;
-            arr.try_push(item)
-                .map_err(|_| ParseError::custom(format!("too many items (max {SIZE})")))?;
+            parse_param(part, &mut arr)?;
         }
         Ok(PoemArrayVec(arr))
     }
+}
+
+fn parse_param<S: AsRef<str>, T: ParseFromParameter, const N: usize>(value: S, vec: &mut ArrayVec<T, N>) -> Result<(), ParseError<PoemArrayVec<T, N>>> {
+   let item = T::parse_from_parameter(value.as_ref())
+        .map_err(ParseError::propagate)?;
+    vec.try_push(item)
+        .map_err(|_| ParseError::custom(format!("too many items (max {N})")))?;
+    Ok(())
 }

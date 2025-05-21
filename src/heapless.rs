@@ -59,21 +59,25 @@ impl<T: Type, const N: usize> Type for PoemHeaplessVec<T, N> {
 impl<T: ParseFromParameter, const N: usize> ParseFromParameter for PoemHeaplessVec<T, N> {
     fn parse_from_parameter(value: &str) -> ParseResult<Self> {
         let mut vec = HeaplessVec::new();
-        let item = T::parse_from_parameter(value)
-            .map_err(|e| ParseError::custom(e.message().to_string()))?;
-        vec.push(item).map_err(|_| ParseError::custom(format!("too many items (max {N})")))?;
+        parse_param(value, &mut vec)?;
         Ok(PoemHeaplessVec(vec))
     }
 
     fn parse_from_parameters<I: IntoIterator<Item = A>, A: AsRef<str>>(iter: I) -> ParseResult<Self> {
         let mut vec = HeaplessVec::new();
         for part in iter {
-            let item = T::parse_from_parameter(part.as_ref())
-                .map_err(|e| ParseError::custom(e.message().to_string()))?;
-            vec.push(item).map_err(|_| ParseError::custom(format!("too many items (max {N})")))?;
+            parse_param(part, &mut vec)?;
         }
         Ok(PoemHeaplessVec(vec))
     }
+}
+
+fn parse_param<S: AsRef<str>, T: ParseFromParameter, const N: usize>(value: S, vec: &mut HeaplessVec<T, N>) -> Result<(), ParseError<PoemHeaplessVec<T, N>>> {
+    let item = T::parse_from_parameter(value.as_ref())
+        .map_err(ParseError::propagate)?;
+    vec.push(item)
+        .map_err(|_| ParseError::custom(format!("too many items (max {N})")))?;
+    Ok(())
 }
 
 impl<T: ParseFromJSON, const N: usize> ParseFromJSON for PoemHeaplessVec<T, N> {
@@ -83,8 +87,10 @@ impl<T: ParseFromJSON, const N: usize> ParseFromJSON for PoemHeaplessVec<T, N> {
             serde_json::Value::Array(arr) => {
                 let mut vec = HeaplessVec::new();
                 for part in arr {
-                    let item = T::parse_from_json(Some(part)).map_err(ParseError::propagate)?;
-                    vec.push(item).map_err(|_| ParseError::custom(format!("too many items (max {N})")))?;
+                    let item = T::parse_from_json(Some(part))
+                        .map_err(ParseError::propagate)?;
+                    vec.push(item)
+                        .map_err(|_| ParseError::custom(format!("too many items (max {N})")))?;
                 }
                 Ok(PoemHeaplessVec(vec))
             },

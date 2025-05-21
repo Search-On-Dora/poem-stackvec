@@ -5,7 +5,7 @@ use poem_openapi::{
 };
 use heapless::Vec as HeaplessVec;
 
-/// `heapless::Vec` wrapper that works in poem_openapi routes
+/// `heapless::Vec` wrapper that works in `poem_openapi` routes
 #[derive(Debug)]
 pub struct PoemHeaplessVec<T, const N: usize>(pub HeaplessVec<T, N>);
 

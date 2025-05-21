@@ -7,7 +7,7 @@ edition = "2024"
 poem-openapi = { version = "5.1",  default-features = false }
 serde = { version = "1.0.219", default-features = false }
 serde_json = { version = "1.0.140", default-features = false }
-smallvec = { version = "1.15", optional = true, default-features = false, features = ["union", "const_generics", "specialization"] }
+smallvec = { version = "1.15", optional = true, default-features = false, features = ["union", "const_generics"] }
 arrayvec = { version = "0.7", optional = true, default-features = false }
 heapless = { version = "0.8", optional = true, default-features = false }
 

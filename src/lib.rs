@@ -19,7 +19,8 @@ mod tests {
     #[cfg(feature = "smallvec")]
     mod smallvec_tests {
         use crate::PoemSmallVec;
-        use poem_openapi::types::ParseFromParameter;
+        use poem_openapi::types::{ParseFromParameter, ParseFromJSON};
+        use serde_json::json;
 
         #[test]
         fn parse_single_element() {
@@ -46,13 +47,28 @@ mod tests {
             let input = vec!["10", "xx", "30"];
             assert!(PoemSmallVec::<i32, 4>::parse_from_parameters(input).is_err());
         }
+
+        #[test]
+        fn parse_json_valid_array() {
+            let value = json!([1, 2, 3]);
+            let vec = PoemSmallVec::<i32, 4>::parse_from_json(Some(value))
+                .expect("should parse valid JSON array");
+            assert_eq!(vec.as_slice(), &[1, 2, 3]);
+        }
+
+        #[test]
+        fn parse_json_invalid_type() {
+            let value = json!({"not": "an array"});
+            assert!(PoemSmallVec::<i32, 4>::parse_from_json(Some(value)).is_err());
+        }
     }
 
     // Group tests for PoemArrayVec
     #[cfg(feature = "arrayvec")]
     mod arrayvec_tests {
         use crate::PoemArrayVec;
-        use poem_openapi::types::ParseFromParameter;
+        use poem_openapi::types::{ParseFromParameter, ParseFromJSON};
+        use serde_json::json;
 
         #[test]
         fn parse_array_single_element() {
@@ -79,13 +95,28 @@ mod tests {
             let input = vec!["10", "xx", "30"];
             assert!(PoemArrayVec::<i32, 4>::parse_from_parameters(input).is_err());
         }
+
+        #[test]
+        fn parse_json_valid_array() {
+            let value = json!([1, 2, 3]);
+            let vec = PoemArrayVec::<i32, 4>::parse_from_json(Some(value))
+                .expect("should parse valid JSON array");
+            assert_eq!(vec.as_slice(), &[1, 2, 3]);
+        }
+
+        #[test]
+        fn parse_json_invalid_type() {
+            let value = json!({"not": "an array"});
+            assert!(PoemArrayVec::<i32, 4>::parse_from_json(Some(value)).is_err());
+        }
     }
 
     // Group tests for PoemHeaplessVec
     #[cfg(feature = "heapless")]
     mod heapless_tests {
         use crate::PoemHeaplessVec;
-        use poem_openapi::types::ParseFromParameter;
+        use poem_openapi::types::{ParseFromParameter, ParseFromJSON};
+        use serde_json::json;
 
         #[test]
         fn parse_heapless_single_element() {
@@ -112,7 +143,85 @@ mod tests {
             let input = vec!["10", "xx", "30"];
             assert!(PoemHeaplessVec::<i32, 4>::parse_from_parameters(input).is_err());
         }
+
+        #[test]
+        fn parse_json_valid_array() {
+            let value = json!([1, 2, 3]);
+            let vec = PoemHeaplessVec::<i32, 4>::parse_from_json(Some(value))
+                .expect("should parse valid JSON array");
+            assert_eq!(vec.as_slice(), &[1, 2, 3]);
+        }
+
+        #[test]
+        fn parse_json_invalid_type() {
+            let value = json!({"not": "an array"});
+            assert!(PoemHeaplessVec::<i32, 4>::parse_from_json(Some(value)).is_err());
+        }
     }
 
-    // TODO - add json parsing tests for PoemSmallVec, PoemArrayVec, and PoemHeaplessVec
+    // ParseFromJSON tests for PoemSmallVec
+    #[cfg(feature = "smallvec")]
+    mod json_smallvec_tests {
+        use crate::PoemSmallVec;
+        use poem_openapi::types::ParseFromJSON;
+        use serde_json::json;
+
+        #[test]
+        fn parse_json_valid_array() {
+            let value = json!([1, 2, 3]);
+            let vec = PoemSmallVec::<i32, 4>::parse_from_json(Some(value))
+                .expect("should parse valid JSON array");
+            assert_eq!(vec.as_slice(), &[1, 2, 3]);
+        }
+
+        #[test]
+        fn parse_json_invalid_type() {
+            let value = json!({"not": "an array"});
+            assert!(PoemSmallVec::<i32, 4>::parse_from_json(Some(value)).is_err());
+        }
+    }
+
+    // ParseFromJSON tests for PoemArrayVec
+    #[cfg(feature = "arrayvec")]
+    mod json_arrayvec_tests {
+        use crate::PoemArrayVec;
+        use poem_openapi::types::ParseFromJSON;
+        use serde_json::json;
+
+        #[test]
+        fn parse_json_valid_array() {
+            let value = json!([1, 2, 3]);
+            let vec = PoemArrayVec::<i32, 4>::parse_from_json(Some(value))
+                .expect("should parse valid JSON array");
+            assert_eq!(vec.as_slice(), &[1, 2, 3]);
+        }
+
+        #[test]
+        fn parse_json_invalid_type() {
+            let value = json!({"not": "an array"});
+            assert!(PoemArrayVec::<i32, 4>::parse_from_json(Some(value)).is_err());
+        }
+    }
+
+    // ParseFromJSON tests for PoemHeaplessVec
+    #[cfg(feature = "heapless")]
+    mod json_heapless_tests {
+        use crate::PoemHeaplessVec;
+        use poem_openapi::types::ParseFromJSON;
+        use serde_json::json;
+
+        #[test]
+        fn parse_json_valid_array() {
+            let value = json!([1, 2, 3]);
+            let vec = PoemHeaplessVec::<i32, 4>::parse_from_json(Some(value))
+                .expect("should parse valid JSON array");
+            assert_eq!(vec.as_slice(), &[1, 2, 3]);
+        }
+
+        #[test]
+        fn parse_json_invalid_type() {
+            let value = json!({"not": "an array"});
+            assert!(PoemHeaplessVec::<i32, 4>::parse_from_json(Some(value)).is_err());
+        }
+    }
 }

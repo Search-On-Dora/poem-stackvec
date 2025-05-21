@@ -59,15 +59,16 @@ impl<T: ParseFromParameter, const SIZE: usize> ParseFromParameter for PoemSmallV
     fn parse_from_parameter(value: &str) -> ParseResult<Self> {
         match T::parse_from_parameter(value) {
             Ok(item) => Ok(PoemSmallVec(smallvec![item])),
-            Err(err) => convert_err(value, err),
+            Err(err) => Err(ParseError::propagate(err)),
         }
     }
+    
     fn parse_from_parameters<I: IntoIterator<Item = A>, A: AsRef<str>>(iter: I) -> ParseResult<Self> {
         let mut list = SmallVec::new();
         for part in iter {
             match T::parse_from_parameter(part.as_ref()) {
                 Ok(item) => list.push(item),
-                Err(err) => return convert_err(part, err),
+                Err(err) => return Err(ParseError::propagate(err)),
             };
         }
         Ok(PoemSmallVec(list))
@@ -86,17 +87,4 @@ impl<T: ParseFromJSON, const SIZE: usize> ParseFromJSON for PoemSmallVec<T, SIZE
             _ => Err(ParseError::expected_type(value)),
         }
     }
-}
-
-// TODO - remove this, use `ParseError::propagate` instead
-fn convert_err<A: AsRef<str>, T: Type, const SIZE: usize>(
-    part: A,
-    err: ParseError<T>,
-) -> Result<PoemSmallVec<T, SIZE>, ParseError<PoemSmallVec<T, SIZE>>> {
-    Err(ParseError::custom(format!(
-        "failed to parse {part} as type {name}: {msg}",
-        part = part.as_ref(),
-        name = T::name(),
-        msg = err.message()
-    )))
 }

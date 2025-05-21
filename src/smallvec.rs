@@ -88,6 +88,7 @@ impl<T: ParseFromJSON, const SIZE: usize> ParseFromJSON for PoemSmallVec<T, SIZE
     }
 }
 
+// TODO - remove this, use `ParseError::propagate` instead
 fn convert_err<A: AsRef<str>, T: Type, const SIZE: usize>(
     part: A,
     err: ParseError<T>,

@@ -1,314 +1,21 @@
-use std::{borrow::Cow, ops::Deref};
-
-use poem_openapi::{
-    registry::MetaSchemaRef,
-    types::{ParseError, ParseFromJSON, ParseFromParameter, ParseResult, Type},
-};
-
 #[cfg(feature = "smallvec")]
-use smallvec::{SmallVec, smallvec};
+pub mod smallvec;
+#[cfg(feature = "smallvec")]
+pub use smallvec::PoemSmallVec;
 
 #[cfg(feature = "arrayvec")]
-use arrayvec::ArrayVec;
-
-#[cfg(feature = "heapless")]
-use heapless::Vec as HeaplessVec;
-
-#[cfg(feature = "smallvec")]
-/// SmallVec<[T; SIZE]> wrapper that works in poem_openapi routes
-#[derive(Debug)]
-pub struct PoemSmallVec<T, const SIZE: usize>(pub SmallVec<[T; SIZE]>);
-
-#[cfg(feature = "smallvec")]
-impl<T, const SIZE: usize> PoemSmallVec<T, SIZE> {
-    #[inline]
-    pub fn new() -> Self {
-        PoemSmallVec(SmallVec::new())
-    }
-    #[inline]
-    pub fn as_slice(&self) -> &[T] {
-        self.0.as_slice()
-    }
-}
-
-#[cfg(feature = "smallvec")]
-impl<T, const SIZE: usize> Default for PoemSmallVec<T, SIZE> {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-#[cfg(feature = "smallvec")]
-impl<T, const SIZE: usize> Deref for PoemSmallVec<T, SIZE> {
-    type Target = [T];
-
-    fn deref(&self) -> &Self::Target {
-        self.0.as_slice()
-    }
-}
-
-#[cfg(feature = "smallvec")]
-impl<T: Type, const SIZE: usize> Type for PoemSmallVec<T, SIZE> {
-    const IS_REQUIRED: bool = Vec::<T>::IS_REQUIRED;
-    type RawValueType = PoemSmallVec<T, SIZE>;
-    type RawElementValueType = T;
-
-    fn name() -> Cow<'static, str> {
-        Vec::<T>::name()
-    }
-
-    fn schema_ref() -> MetaSchemaRef {
-        Vec::<T>::schema_ref()
-    }
-
-    fn as_raw_value(&self) -> Option<&Self::RawValueType> {
-        Some(self)
-    }
-
-    fn raw_element_iter<'a>(
-        &'a self,
-    ) -> Box<dyn Iterator<Item = &'a Self::RawElementValueType> + 'a> {
-        Box::new(self.0.iter())
-    }
-}
-
-#[cfg(feature = "smallvec")]
-impl<T: ParseFromParameter, const SIZE: usize> ParseFromParameter for PoemSmallVec<T, SIZE> {
-    fn parse_from_parameter(value: &str) -> ParseResult<Self> {
-        match T::parse_from_parameter(value) {
-            Ok(item) => Ok(PoemSmallVec(smallvec![item])),
-                    // TODO - use ParseError::propagate instead of convert_err
-            Err(err) => convert_err(value, err),
-        }
-    }
-
-    fn parse_from_parameters<I: IntoIterator<Item = A>, A: AsRef<str>>(
-        iter: I,
-    ) -> ParseResult<Self> {
-        let mut list = SmallVec::new();
-        for part in iter {
-            match T::parse_from_parameter(part.as_ref()) {
-                Ok(item) => list.push(item),
-                Err(err) => {
-                    // TODO - use ParseError::propagate instead of convert_err
-                    return convert_err(part, err);
-                }
-            };
-        }
-        Ok(PoemSmallVec(list))
-    }
-}
-
-#[cfg(feature = "smallvec")]
-impl<T: ParseFromJSON, const SIZE: usize> ParseFromJSON for PoemSmallVec<T, SIZE> {
-    fn parse_from_json(value: Option<serde_json::Value>) -> ParseResult<Self> {
-        let value = value.unwrap_or_default();
-        match value {
-            serde_json::Value::Array(arr) => Ok(PoemSmallVec(
-                arr.into_iter()
-                    .map(|part| T::parse_from_json(Some(part)).map_err(ParseError::propagate))
-                    .collect::<Result<_, _>>()?,
-            )),
-            _ => Err(ParseError::expected_type(value)),
-        }
-    }
-}
-
-#[cfg(feature = "smallvec")]
-fn convert_err<A: AsRef<str>, T: Type, const SIZE: usize>(
-    part: A,
-    err: ParseError<T>,
-) -> Result<PoemSmallVec<T, SIZE>, ParseError<PoemSmallVec<T, SIZE>>> {
-    Err(ParseError::custom(format!(
-        "failed to parse {part} as type {name}: {msg}",
-        part = part.as_ref(),
-        name = T::name(),
-        msg = err.message()
-    )))
-}
-
+pub mod arrayvec;
 #[cfg(feature = "arrayvec")]
-/// Fixed‑capacity ArrayVec<[T; SIZE]> wrapper for
-/// poem_openapi route params (no heap fallback)
-#[derive(Debug)]
-pub struct PoemArrayVec<T, const SIZE: usize>(pub ArrayVec<T, SIZE>);
-
-#[cfg(feature = "arrayvec")]
-impl<T, const SIZE: usize> PoemArrayVec<T, SIZE> {
-    #[inline]
-    pub fn new() -> Self {
-        PoemArrayVec(ArrayVec::new())
-    }
-    #[inline]
-    pub fn as_slice(&self) -> &[T] {
-        self.0.as_slice()
-    }
-}
-
-#[cfg(feature = "arrayvec")]
-impl<T, const SIZE: usize> Default for PoemArrayVec<T, SIZE> {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-#[cfg(feature = "arrayvec")]
-impl<T, const SIZE: usize> Deref for PoemArrayVec<T, SIZE> {
-    type Target = [T];
-
-    fn deref(&self) -> &Self::Target {
-        self.0.as_slice()
-    }
-}
-
-#[cfg(feature = "arrayvec")]
-impl<T: Type, const SIZE: usize> Type for PoemArrayVec<T, SIZE> {
-    const IS_REQUIRED: bool = <[T; SIZE]>::IS_REQUIRED;
-    type RawValueType = PoemArrayVec<T, SIZE>;
-    type RawElementValueType = T;
-
-    fn name() -> Cow<'static, str> {
-        <[T; SIZE]>::name()
-    }
-
-    fn schema_ref() -> MetaSchemaRef {
-        <[T; SIZE]>::schema_ref()
-    }
-
-    fn as_raw_value(&self) -> Option<&Self::RawValueType> {
-        Some(self)
-    }
-
-    fn raw_element_iter<'a>(
-        &'a self,
-    ) -> Box<dyn Iterator<Item = &'a Self::RawElementValueType> + 'a> {
-        Box::new(self.0.iter())
-    }
-}
-
-#[cfg(feature = "arrayvec")]
-impl<T: ParseFromParameter, const SIZE: usize> ParseFromParameter for PoemArrayVec<T, SIZE> {
-    fn parse_from_parameter(value: &str) -> ParseResult<Self> {
-        let mut arr = ArrayVec::new();
-        let item = T::parse_from_parameter(value)
-            .map_err(|e| ParseError::custom(e.message().to_string()))?;
-        arr.try_push(item)
-            .map_err(|_| ParseError::custom(format!("too many items (max {SIZE})")))?;
-        Ok(PoemArrayVec(arr))
-    }
-
-    fn parse_from_parameters<I: IntoIterator<Item = A>, A: AsRef<str>>(
-        iter: I,
-    ) -> ParseResult<Self> {
-        let mut arr = ArrayVec::new();
-        for part in iter {
-            let item = T::parse_from_parameter(part.as_ref())
-                .map_err(|e| ParseError::custom(e.message().to_string()))?;
-            arr.try_push(item)
-                .map_err(|_| ParseError::custom(format!("too many items (max {SIZE})")))?;
-        }
-        Ok(PoemArrayVec(arr))
-    }
-}
+pub use arrayvec::PoemArrayVec;
 
 #[cfg(feature = "heapless")]
-/// `heapless::Vec` wrapper that works in poem_openapi routes
-#[derive(Debug)]
-pub struct PoemHeaplessVec<T, const N: usize>(pub HeaplessVec<T, N>);
-
+pub mod heapless;
 #[cfg(feature = "heapless")]
-impl<T, const N: usize> PoemHeaplessVec<T, N> {
-    #[inline]
-    pub fn new() -> Self {
-        PoemHeaplessVec(HeaplessVec::new())
-    }
-    #[inline]
-    pub fn as_slice(&self) -> &[T] {
-        self.0.as_slice()
-    }
-}
-
-#[cfg(feature = "heapless")]
-impl<T, const N: usize> Default for PoemHeaplessVec<T, N> {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-#[cfg(feature = "heapless")]
-impl<T, const N: usize> Deref for PoemHeaplessVec<T, N> {
-    type Target = [T];
-
-    fn deref(&self) -> &Self::Target {
-        self.0.as_slice()
-    }
-}
-
-#[cfg(feature = "heapless")]
-impl<T: Type, const N: usize> Type for PoemHeaplessVec<T, N> {
-    const IS_REQUIRED: bool = <[T; N]>::IS_REQUIRED;
-    type RawValueType = Self;
-    type RawElementValueType = T;
-
-    fn name() -> Cow<'static, str> {
-        <[T; N]>::name()
-    }
-
-    fn schema_ref() -> MetaSchemaRef {
-        <[T; N]>::schema_ref()
-    }
-
-    fn as_raw_value(&self) -> Option<&Self::RawValueType> {
-        Some(self)
-    }
-
-    fn raw_element_iter<'a>(&'a self) -> Box<dyn Iterator<Item = &'a Self::RawElementValueType> + 'a> {
-        Box::new(self.0.iter())
-    }
-}
-
-#[cfg(feature = "heapless")]
-impl<T: ParseFromParameter, const N: usize> ParseFromParameter for PoemHeaplessVec<T, N> {
-    fn parse_from_parameter(value: &str) -> ParseResult<Self> {
-        let mut vec = HeaplessVec::new();
-        let item = T::parse_from_parameter(value)
-            .map_err(|e| ParseError::custom(e.message().to_string()))?;
-        vec.push(item).map_err(|_| ParseError::custom(format!("too many items (max {N})")))?;
-        Ok(PoemHeaplessVec(vec))
-    }
-
-    fn parse_from_parameters<I: IntoIterator<Item = A>, A: AsRef<str>>(iter: I) -> ParseResult<Self> {
-        let mut vec = HeaplessVec::new();
-        for part in iter {
-            let item = T::parse_from_parameter(part.as_ref())
-                .map_err(|e| ParseError::custom(e.message().to_string()))?;
-            vec.push(item).map_err(|_| ParseError::custom(format!("too many items (max {N})")))?;
-        }
-        Ok(PoemHeaplessVec(vec))
-    }
-}
-
-#[cfg(feature = "heapless")]
-impl<T: ParseFromJSON, const N: usize> ParseFromJSON for PoemHeaplessVec<T, N> {
-    fn parse_from_json(value: Option<serde_json::Value>) -> ParseResult<Self> {
-        let value = value.unwrap_or_default();
-        match value {
-            serde_json::Value::Array(arr) => {
-                let mut vec = HeaplessVec::new();
-                for part in arr {
-                    let item = T::parse_from_json(Some(part)).map_err(ParseError::propagate)?;
-                    vec.push(item).map_err(|_| ParseError::custom(format!("too many items (max {N})")))?;
-                }
-                Ok(PoemHeaplessVec(vec))
-            },
-            _ => Err(ParseError::expected_type(value)),
-        }
-    }
-}
+pub use heapless::PoemHeaplessVec;
 
 #[cfg(test)]
 mod tests {
-    // Group tests for PoemSmallVec behind the "smallvec" feature flag.
+    // Group tests for PoemSmallVec
     #[cfg(feature = "smallvec")]
     mod smallvec_tests {
         use crate::PoemSmallVec;
@@ -341,7 +48,7 @@ mod tests {
         }
     }
 
-    // Group tests for PoemArrayVec behind the "arrayvec" feature flag.
+    // Group tests for PoemArrayVec
     #[cfg(feature = "arrayvec")]
     mod arrayvec_tests {
         use crate::PoemArrayVec;
@@ -374,7 +81,7 @@ mod tests {
         }
     }
 
-    // Group tests for PoemHeaplessVec behind the "heapless" feature flag.
+    // Group tests for PoemHeaplessVec
     #[cfg(feature = "heapless")]
     mod heapless_tests {
         use crate::PoemHeaplessVec;

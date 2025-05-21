@@ -15,12 +15,34 @@ pub use heapless::PoemHeaplessVec;
 
 #[cfg(test)]
 mod tests {
+    use poem_openapi::{registry::MetaSchemaRef, types::Type};
+
+    pub(crate) fn check_minmax<T: Type, const MAX: usize>() {
+        match T::schema_ref() {
+            MetaSchemaRef::Inline(box_meta) => {
+                //println!("MetaSchemaRef::Inline match arm:  {:?}", box_meta);
+                assert_eq!(box_meta.min_items, Some(1));
+                assert_eq!(box_meta.max_items, Some(MAX));
+                assert_eq!(box_meta.min_length, Some(1));
+                assert_eq!(box_meta.max_length, Some(MAX));
+            },
+            MetaSchemaRef::Reference(s) => {
+                panic!("expected Inline schema, got Reference");
+            },
+        }
+    }
+
     // Group tests for PoemSmallVec
     #[cfg(feature = "smallvec")]
     mod smallvec_tests {
         use crate::PoemSmallVec;
         use poem_openapi::types::{ParseFromParameter, ParseFromJSON};
         use serde_json::json;
+
+        #[test]
+        fn specifies_correct_minmax() {
+            super::check_minmax::<PoemSmallVec<i32, 4>, 4>();
+        }
 
         #[test]
         fn parse_single_element() {
@@ -67,8 +89,13 @@ mod tests {
     #[cfg(feature = "arrayvec")]
     mod arrayvec_tests {
         use crate::PoemArrayVec;
-        use poem_openapi::types::{ParseFromParameter, ParseFromJSON};
+        use poem_openapi::types::{ParseFromJSON, ParseFromParameter};
         use serde_json::json;
+
+        #[test]
+        fn specifies_correct_minmax() {
+            super::check_minmax::<PoemArrayVec<i32, 8>, 8>();
+        }
 
         #[test]
         fn parse_array_single_element() {
@@ -117,6 +144,11 @@ mod tests {
         use crate::PoemHeaplessVec;
         use poem_openapi::types::{ParseFromParameter, ParseFromJSON};
         use serde_json::json;
+
+        #[test]
+        fn specifies_correct_minmax() {
+            super::check_minmax::<PoemHeaplessVec<i32, 2>, 2>();
+        }
 
         #[test]
         fn parse_heapless_single_element() {

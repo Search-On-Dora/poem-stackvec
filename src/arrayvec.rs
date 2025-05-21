@@ -36,7 +36,7 @@ impl<T, const SIZE: usize> Deref for PoemArrayVec<T, SIZE> {
 
 impl<T: Type, const SIZE: usize> Type for PoemArrayVec<T, SIZE> {
     const IS_REQUIRED: bool = <[T; SIZE]>::IS_REQUIRED;
-    type RawValueType = PoemArrayVec<T, SIZE>;
+    type RawValueType = Self;
     type RawElementValueType = T;
 
     fn name() -> Cow<'static, str> {

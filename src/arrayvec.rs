@@ -1,11 +1,11 @@
 use std::{borrow::Cow, ops::Deref};
 use poem_openapi::{
     registry::MetaSchemaRef,
-    types::{ParseError, ParseFromParameter, ParseResult, Type},
+    types::{ParseError, ParseFromJSON, ParseFromParameter, ParseResult, Type},
 };
 use arrayvec::ArrayVec;
 
-/// Fixed‑capacity ArrayVec<[T; SIZE]> wrapper for poem_openapi route params
+/// `arrayvec::ArrayVec` wrapper that works in `poem_openapi` routes
 #[derive(Debug)]
 pub struct PoemArrayVec<T, const SIZE: usize>(pub ArrayVec<T, SIZE>);
 
@@ -82,4 +82,18 @@ fn parse_param<S: AsRef<str>, T: ParseFromParameter, const N: usize>(value: S, v
     vec.try_push(item)
         .map_err(|_| ParseError::custom(format!("too many items (max {N})")))?;
     Ok(())
+}
+
+impl<T: ParseFromJSON, const SIZE: usize> ParseFromJSON for PoemArrayVec<T, SIZE> {
+    fn parse_from_json(value: Option<serde_json::Value>) -> ParseResult<Self> {
+        let value = value.unwrap_or_default();
+        match value {
+            serde_json::Value::Array(arr) => Ok(PoemArrayVec(
+                arr.into_iter()
+                    .map(|part| T::parse_from_json(Some(part)).map_err(ParseError::propagate))
+                    .collect::<Result<_, _>>()?,
+            )),
+            _ => Err(ParseError::expected_type(value)),
+        }
+    }
 }

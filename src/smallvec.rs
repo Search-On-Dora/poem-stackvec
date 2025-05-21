@@ -5,7 +5,7 @@ use poem_openapi::{
 };
 use smallvec::{SmallVec, smallvec};
 
-/// SmallVec<[T; SIZE]> wrapper that works in poem_openapi routes
+/// `smallvec::SmallVec` wrapper that works in `poem_openapi` routes
 #[derive(Debug)]
 pub struct PoemSmallVec<T, const SIZE: usize>(pub SmallVec<[T; SIZE]>);
 

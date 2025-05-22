@@ -23,16 +23,18 @@ mod tests {
         where <T as Type>::RawElementValueType: Type
     {
         match T::schema_ref() {
-            MetaSchemaRef::Inline(box_meta) => {
-                assert_eq!(box_meta.nullable, false);
-                assert_eq!(box_meta.min_items, Some(1));
-                assert_eq!(box_meta.max_items, Some(MAX));
+            MetaSchemaRef::Inline(meta) => {
+                assert_eq!(meta.ty, "array");
+                assert_eq!(meta.nullable, false);
+                assert_eq!(meta.min_items, Some(1));
+                assert_eq!(meta.max_items, Some(MAX));
                 // (min/max)-length is supposed to be for strings, but poem uses it for arrays too?
-                assert_eq!(box_meta.min_length, Some(1));
-                assert_eq!(box_meta.max_length, Some(MAX));
+                assert_eq!(meta.min_length, Some(1));
+                assert_eq!(meta.max_length, Some(MAX));
                 let max_str = MAX.to_string();
                 let max = max_str.as_str();
-                assert_eq!(box_meta.description, Some(format!("1 to {max} items of type {}", <T as Type>::RawElementValueType::name()).as_str()));
+                assert_eq!(meta.description, Some(format!("1 to {max} items of type {}", <T as Type>::RawElementValueType::name()).as_str()));
+                assert_eq!(meta.items, Some(Box::new(T::RawElementValueType::schema_ref())));
             },
             MetaSchemaRef::Reference(s) => {
                 panic!("expected Inline schema, got Reference: {s}");
@@ -50,15 +52,17 @@ mod tests {
         #[test]
         fn specifies_correct_openapi_props() {
             match PoemSmallVec::<u32, 4>::schema_ref() {
-                MetaSchemaRef::Inline(box_meta) => {
-                    assert_eq!(box_meta.nullable, false);
-                    assert_eq!(box_meta.min_items, Some(1));
-                    assert_eq!(box_meta.max_items, None);
-                    assert_eq!(box_meta.min_length, Some(1));
-                    assert_eq!(box_meta.max_length, None);
+                MetaSchemaRef::Inline(meta) => {
+                    assert_eq!(meta.ty, "array");
+                    assert_eq!(meta.nullable, false);
+                    assert_eq!(meta.min_items, Some(1));
+                    assert_eq!(meta.max_items, None);
+                    assert_eq!(meta.min_length, Some(1));
+                    assert_eq!(meta.max_length, None);
                     let elem_type_name = <PoemSmallVec::<u32, 4> as Type>::RawElementValueType::name();
-                    assert_eq!(box_meta.title, Some(format!("Vec<{}>", elem_type_name)));
-                    assert_eq!(box_meta.description, Some(format!("at least 1 item of type {}", elem_type_name)).as_deref());
+                    assert_eq!(meta.title, Some(format!("Vec<{}>", elem_type_name)));
+                    assert_eq!(meta.description, Some(format!("at least 1 item of type {}", elem_type_name)).as_deref());
+                    assert_eq!(meta.items, Some(Box::new(u32::schema_ref())));
                 },
                 MetaSchemaRef::Reference(s) => {
                     panic!("expected Inline schema, got Reference: {s}");

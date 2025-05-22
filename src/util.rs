@@ -9,7 +9,8 @@ pub(crate) fn fixed_capacity_schema_ref<T: Type, const SIZE: usize>() -> MetaSch
     schema.title = Some(format!("ArrayVec<{}>", T::name()));
 
     let desc = format!("1 to {SIZE} items of type {}", T::name());
-    // this should only get called to build the openapi schema, and not be a repeated cost
+    // this should only get called once to build the openapi schema, 
+    // unless that isn't true this won't leak memory repeatedly.
     schema.description = Some(Box::leak(desc.into_boxed_str()));
 
     MetaSchemaRef::Inline(Box::new(schema))

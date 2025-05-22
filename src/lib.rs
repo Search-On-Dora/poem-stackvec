@@ -13,21 +13,28 @@ pub mod heapless;
 #[cfg(feature = "heapless")]
 pub use heapless::PoemHeaplessVec;
 
+pub(crate) mod util;
+
 #[cfg(test)]
 mod tests {
     use poem_openapi::{registry::MetaSchemaRef, types::Type};
 
-    pub(crate) fn check_minmax<T: Type, const MAX: usize>() {
+    pub(crate) fn check_openapi_props<T: Type, const MAX: usize>() 
+        where <T as Type>::RawElementValueType: Type
+    {
         match T::schema_ref() {
             MetaSchemaRef::Inline(box_meta) => {
                 //println!("MetaSchemaRef::Inline match arm:  {:?}", box_meta);
+                assert_eq!(box_meta.nullable, false);
                 assert_eq!(box_meta.min_items, Some(1));
                 assert_eq!(box_meta.max_items, Some(MAX));
+                // (min/max)-length is supposed to be for strings, but poem uses it for arrays too?
                 assert_eq!(box_meta.min_length, Some(1));
                 assert_eq!(box_meta.max_length, Some(MAX));
+                assert_eq!(box_meta.title, Some(format!("1 to {MAX} items of type {}", <T as Type>::RawElementValueType::name())));
             },
             MetaSchemaRef::Reference(s) => {
-                panic!("expected Inline schema, got Reference");
+                panic!("expected Inline schema, got Reference: {s}");
             },
         }
     }
@@ -36,12 +43,24 @@ mod tests {
     #[cfg(feature = "smallvec")]
     mod smallvec_tests {
         use crate::PoemSmallVec;
-        use poem_openapi::types::{ParseFromParameter, ParseFromJSON};
+        use poem_openapi::{registry::MetaSchemaRef, types::{ParseFromParameter, ParseFromJSON, Type}};
         use serde_json::json;
 
         #[test]
-        fn specifies_correct_minmax() {
-            super::check_minmax::<PoemSmallVec<i32, 4>, 4>();
+        fn specifies_correct_openapi_props() {
+            match PoemSmallVec::<u32, 4>::schema_ref() {
+                MetaSchemaRef::Inline(box_meta) => {
+                    assert_eq!(box_meta.nullable, false);
+                    assert_eq!(box_meta.min_items, Some(1));
+                    assert_eq!(box_meta.max_items, None);
+                    assert_eq!(box_meta.min_length, Some(1));
+                    assert_eq!(box_meta.max_length, None);
+                    assert_eq!(box_meta.title, Some(format!("at least 1 item of type {}", <PoemSmallVec::<u32, 4> as Type>::RawElementValueType::name())));
+                },
+                MetaSchemaRef::Reference(s) => {
+                    panic!("expected Inline schema, got Reference: {s}");
+                },
+            }
         }
 
         #[test]
@@ -93,8 +112,8 @@ mod tests {
         use serde_json::json;
 
         #[test]
-        fn specifies_correct_minmax() {
-            super::check_minmax::<PoemArrayVec<i32, 8>, 8>();
+        fn specifies_correct_openapi_props() {
+            super::check_openapi_props::<PoemArrayVec<u16, 8>, 8>();
         }
 
         #[test]
@@ -146,8 +165,8 @@ mod tests {
         use serde_json::json;
 
         #[test]
-        fn specifies_correct_minmax() {
-            super::check_minmax::<PoemHeaplessVec<i32, 2>, 2>();
+        fn specifies_correct_openapi_props() {
+            super::check_openapi_props::<PoemHeaplessVec<u64, 2>, 2>();
         }
 
         #[test]

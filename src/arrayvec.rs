@@ -5,6 +5,8 @@ use poem_openapi::{
 };
 use arrayvec::ArrayVec;
 
+use crate::util::fixed_capacity_schema_ref;
+
 /// `arrayvec::ArrayVec` wrapper that works in `poem_openapi` routes
 #[derive(Debug)]
 pub struct PoemArrayVec<T, const SIZE: usize>(pub ArrayVec<T, SIZE>);
@@ -44,7 +46,7 @@ impl<T: Type, const SIZE: usize> Type for PoemArrayVec<T, SIZE> {
     }
 
     fn schema_ref() -> MetaSchemaRef {
-        <[T; SIZE]>::schema_ref()
+        fixed_capacity_schema_ref::<T, SIZE>()
     }
 
     fn as_raw_value(&self) -> Option<&Self::RawValueType> {

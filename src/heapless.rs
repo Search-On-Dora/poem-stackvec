@@ -5,6 +5,8 @@ use poem_openapi::{
 };
 use heapless::Vec as HeaplessVec;
 
+use crate::util::fixed_capacity_schema_ref;
+
 /// `heapless::Vec` wrapper that works in `poem_openapi` routes
 #[derive(Debug)]
 pub struct PoemHeaplessVec<T, const N: usize>(pub HeaplessVec<T, N>);
@@ -44,7 +46,7 @@ impl<T: Type, const N: usize> Type for PoemHeaplessVec<T, N> {
     }
 
     fn schema_ref() -> MetaSchemaRef {
-        <[T; N]>::schema_ref()
+        fixed_capacity_schema_ref::<T, N>()
     }
 
     fn as_raw_value(&self) -> Option<&Self::RawValueType> {

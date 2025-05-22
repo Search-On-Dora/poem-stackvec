@@ -2,9 +2,12 @@
 name = "poem-stackvec"
 version = "0.1.0"
 edition = "2024"
+authors = ["Stella Cannefax"]
+license = "MIT"
+description = "stack-allocated vector types for poem_openapi route parameters"
 
 [dependencies]
-poem-openapi = { version = "5.1",  default-features = false }
+poem-openapi = { version = "5",  default-features = false }
 serde = { version = "1.0.219", default-features = false }
 serde_json = { version = "1.0.140", default-features = false }
 smallvec = { version = "1.15", optional = true, default-features = false, features = ["union", "const_generics"] }

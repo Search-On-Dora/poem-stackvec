@@ -47,7 +47,6 @@ impl<T: Type, const SIZE: usize> Type for PoemSmallVec<T, SIZE> {
     fn schema_ref() -> MetaSchemaRef {
         let vec_schema = Vec::<T>::schema_ref();
         let mut schema = vec_schema.unwrap_inline().clone();
-        schema.nullable = false;
         schema.min_items = Some(1);
         schema.min_length = Some(1);
         schema.title = Some(format!("at least 1 item of type {}", T::name()));

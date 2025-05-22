@@ -30,7 +30,9 @@ mod tests {
                 // (min/max)-length is supposed to be for strings, but poem uses it for arrays too?
                 assert_eq!(box_meta.min_length, Some(1));
                 assert_eq!(box_meta.max_length, Some(MAX));
-                assert_eq!(box_meta.title, Some(format!("1 to {MAX} items of type {}", <T as Type>::RawElementValueType::name())));
+                let max_str = MAX.to_string();
+                let max = max_str.as_str();
+                assert_eq!(box_meta.description, Some(format!("1 to {max} items of type {}", <T as Type>::RawElementValueType::name()).as_str()));
             },
             MetaSchemaRef::Reference(s) => {
                 panic!("expected Inline schema, got Reference: {s}");
@@ -54,7 +56,9 @@ mod tests {
                     assert_eq!(box_meta.max_items, None);
                     assert_eq!(box_meta.min_length, Some(1));
                     assert_eq!(box_meta.max_length, None);
-                    assert_eq!(box_meta.title, Some(format!("at least 1 item of type {}", <PoemSmallVec::<u32, 4> as Type>::RawElementValueType::name())));
+                    let elem_type_name = <PoemSmallVec::<u32, 4> as Type>::RawElementValueType::name();
+                    assert_eq!(box_meta.title, Some(format!("Vec<{}>", elem_type_name)));
+                    assert_eq!(box_meta.description, Some(format!("at least 1 item of type {}", elem_type_name)).as_deref());
                 },
                 MetaSchemaRef::Reference(s) => {
                     panic!("expected Inline schema, got Reference: {s}");

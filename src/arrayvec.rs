@@ -79,7 +79,9 @@ impl<T: ParseFromParameter, const SIZE: usize> ParseFromParameter for PoemArrayV
     }
 }
 
-fn parse_param<S: AsRef<str>, T: ParseFromParameter, const N: usize>(value: S, vec: &mut ArrayVec<T, N>) -> Result<(), ParseError<PoemArrayVec<T, N>>> {
+fn parse_param<S: AsRef<str>, T: ParseFromParameter, const N: usize>
+    (value: S, vec: &mut ArrayVec<T, N>) -> Result<(), ParseError<PoemArrayVec<T, N>>> 
+{
    let item = T::parse_from_parameter(value.as_ref())
         .map_err(ParseError::propagate)?;
     vec.try_push(item)

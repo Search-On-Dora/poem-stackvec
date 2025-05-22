@@ -13,6 +13,30 @@ The three vector types exported correspond directly to crate features:
 * `PoemHeaplessVec` is exported by the `heapless` feature
 * `PoemSmallVec` is exported by the `smallvec` feature
 
+## Usage
+
+Use one of the 3 vec types as a route parameter type. Using the `arrayvec` feature, that looks like this:
+
+```rust
+use poem_openapi::{OpenApi, param::Query, payload::Json};
+use poem_stackvec::PoemArrayVec;
+
+struct Api;
+
+#[OpenApi]
+impl Api {
+    #[oai(path = "/echo", method = "get")]
+    async fn echo(
+        &self,
+        // specify max of 20 u16 elements
+        #[oai(explode = false)] Query(data): Query<PoemArrayVec<u16, 20>>,
+    ) -> poem::Result<Json<Vec<u16>>> {
+        let slice = data.as_slice();
+        Ok(Json(Vec::from(slice)))
+    }
+}
+```
+
 ## Type Differences
 
 The OpenAPI semantics specified by these types differ slightly from the default `Vec<T>` or `[T; SIZE]` in the following way:

@@ -49,7 +49,12 @@ impl<T: Type, const SIZE: usize> Type for PoemSmallVec<T, SIZE> {
         let mut schema = vec_schema.unwrap_inline().clone();
         schema.min_items = Some(1);
         schema.min_length = Some(1);
-        schema.title = Some(format!("at least 1 item of type {}", T::name()));
+        schema.title = Some(format!("Vec<{}>", T::name()));
+
+        let desc = ["at least 1 item of type ", &T::name()].concat();
+        // this should only get called to build the openapi schema, and not be a repeated cost
+        schema.description = Some(Box::leak(desc.into_boxed_str()));
+
         MetaSchemaRef::Inline(Box::new(schema))
     }
 

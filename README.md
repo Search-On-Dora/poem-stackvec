@@ -51,6 +51,6 @@ both `PoemArrayVec` and `PoemHeaplessVec` specify OpenAPI properties for the min
 If you want to make a route parameter optional (allow 0 elements), wrap the type in `Option`:
 
 ```rust
-Option<PoemArrayVec<T, 8>>`
+Option<PoemArrayVec<T, 8>>
 ```
 

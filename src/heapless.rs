@@ -31,6 +31,7 @@ impl<T, const N: usize> Default for PoemHeaplessVec<T, N> {
 impl<T, const N: usize> Deref for PoemHeaplessVec<T, N> {
     type Target = [T];
 
+    #[inline]
     fn deref(&self) -> &Self::Target {
         self.0.as_slice()
     }

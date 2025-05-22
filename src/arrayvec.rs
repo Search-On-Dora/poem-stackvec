@@ -30,7 +30,8 @@ impl<T, const SIZE: usize> Default for PoemArrayVec<T, SIZE> {
 
 impl<T, const SIZE: usize> Deref for PoemArrayVec<T, SIZE> {
     type Target = [T];
-
+    
+    #[inline]
     fn deref(&self) -> &Self::Target {
         self.0.as_slice()
     }

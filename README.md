@@ -28,8 +28,9 @@ impl Api {
     #[oai(path = "/echo", method = "get")]
     async fn echo(
         &self,
-        // specify max of 20 u16 elements
-        #[oai(explode = false)] Query(data): Query<PoemArrayVec<u16, 20>>,
+        #[oai(explode = false)]
+        // specifies max of 20 elements
+        Query(data): Query<PoemArrayVec<u16, 20>>,
     ) -> poem::Result<Json<Vec<u16>>> {
         let slice = data.as_slice();
         Ok(Json(Vec::from(slice)))

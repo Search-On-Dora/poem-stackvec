@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 authors = ["Stella Cannefax"]
 license = "MIT"
+repository = "https://github.com/Search-On-Dora/poem-stackvec"
 description = "stack-allocated vector types for poem_openapi route parameters"
 
 [dependencies]

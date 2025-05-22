@@ -24,7 +24,6 @@ mod tests {
     {
         match T::schema_ref() {
             MetaSchemaRef::Inline(box_meta) => {
-                //println!("MetaSchemaRef::Inline match arm:  {:?}", box_meta);
                 assert_eq!(box_meta.nullable, false);
                 assert_eq!(box_meta.min_items, Some(1));
                 assert_eq!(box_meta.max_items, Some(MAX));
